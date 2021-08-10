@@ -20,7 +20,7 @@ import qualified Data.String as S
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BS
 
-import Data.Text hiding (head)
+import Data.Text as Text
 import Data.Text.Encoding (decodeUtf8)
 
 import Network.Socket
@@ -35,7 +35,7 @@ runServer port = withSocketsDo $ do
       , addrSocketType = Stream
     }
 
-    addr <- head <$> getAddrInfo (Just hints) Nothing (Just (show port))
+    addr <- Prelude.head <$> getAddrInfo (Just hints) Nothing (Just (show port))
 
     rooms <- newMVar Map.empty
 
@@ -77,16 +77,15 @@ clientInit :: MVar Rooms -> Socket -> SockAddr -> IO ()
 clientInit rooms sock addr = fix $ \loop -> do
     msg <- recv sock 1024
 
-    let args = words $ decodeUtf8 msg
+    let args = Text.words $ decodeUtf8 msg
 
-    case control of
+    case attemptInit args of
         Start _ -> pure ()
         Retry   -> pure ()
         Exit e  -> putStrLn $ show e
 
   where
-    attemptInit :: BS.ByteString -> ClientControl
-    attemptInit words = do
-        maybe Exit "" Mini.parse (decodeUtf8 msg)
+    attemptInit :: [Text] -> ClientControl
+    attemptInit words = Exit "Test"
 
 --------------------------------------------------------------------------------

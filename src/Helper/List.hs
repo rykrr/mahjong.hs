@@ -4,18 +4,18 @@ import Data.Sort as Sort
 
 --------------------------------------------------------------------------------
 
-removeInstances :: Eq a => Int -> a -> [a] -> [a]
-removeInstances _ _ [] = []
-removeInstances 0 _ xs = xs
+removeInstances :: Eq a => Int -> a -> [a] -> Maybe [a]
+removeInstances 0 _ xs = return xs
+removeInstances _ _ [] = Nothing
 
 removeInstances n y (x:xs)
   | x == y    = recurse (n - 1)
-  | otherwise = x : recurse n
+  | otherwise = recurse n >>= return . (:) x
   where recurse n = removeInstances n y xs
 
 --------------------------------------------------------------------------------
 
-removeSingle :: Eq a => a -> [a] -> [a]
+removeSingle :: Eq a => a -> [a] -> Maybe [a]
 removeSingle = removeInstances 1
 
 --------------------------------------------------------------------------------
@@ -28,18 +28,18 @@ insert y (x:xs)
 
 --------------------------------------------------------------------------------
 
-removeInstances' :: Int -> (a -> Bool) -> [a] -> [a]
-removeInstances' _ _ [] = []
-removeInstances' 0 _ xs = xs
+removeInstances' :: Int -> (a -> Bool) -> [a] -> Maybe [a]
+removeInstances' 0 _ xs = return xs
+removeInstances' _ _ [] = Nothing
 
-removeInstances' n eq (x:xs)
-  | eq x      = recurse (n - 1)
-  | otherwise = x : recurse n
-  where recurse n = removeInstances' n eq xs
+removeInstances' n cond (x:xs)
+  | cond x    = recurse (n - 1)
+  | otherwise = recurse n >>= return . (:) x
+  where recurse n = removeInstances' n cond xs
 
 --------------------------------------------------------------------------------
 
-removeSingle' :: (a -> Bool) -> [a] -> [a]
+removeSingle' :: (a -> Bool) -> [a] -> Maybe [a]
 removeSingle' = removeInstances' 1
 
 --------------------------------------------------------------------------------

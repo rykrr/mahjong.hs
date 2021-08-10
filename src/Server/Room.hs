@@ -44,7 +44,7 @@ newRoom directory = modifyMVar directory newRoom'
 
 --------------------------------------------------------------------------------
 
-registerPlayer :: MVar Rooms -> PlayerIdentity
+--registerPlayer :: MVar Rooms -> PlayerIdentity
 
 --------------------------------------------------------------------------------
 

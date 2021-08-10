@@ -73,8 +73,8 @@ null _            = False
 --------------------------------------------------------------------------------
 
 dismiss :: PlayerId -> Pending -> Pending
-dismiss id (Pending list) =
-    Pending $ removeSingle' ((== id) . fst) list
+dismiss id (Pending pending) =
+    maybe (Pending pending) (Pending) (removeSingle' ((== id) . fst) pending)
 
 --------------------------------------------------------------------------------
 

@@ -79,9 +79,10 @@ addTiles tiles player@(Player{ concealedTiles = concealed }) =
     player { concealedTiles = sort (tiles ++ concealed) }
 
 removeTile :: Tile -> Player -> Result Player
-removeTile tile player@(Player{ concealedTiles = c })
-  | elem tile c = return player { concealedTiles = removeSingle tile c }
-  | otherwise   = Err "tile is not in player's hand"
+removeTile tile player@(Player{ concealedTiles = c }) = do
+    tiles <- resultFromMaybe "Tile is not in player's hand"
+                           $ removeSingle tile c
+    return player { concealedTiles = tiles }
 
 replaceTile :: Tile -> Tile -> Player -> Result Player
 replaceTile target replacement player

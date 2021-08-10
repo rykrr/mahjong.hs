@@ -16,6 +16,8 @@ import Control.Result
 import Control.Monad
 import Control.If
 
+import Data.Maybe
+
 import qualified Data.Text as Text
 
 import Text.Printf
@@ -53,8 +55,8 @@ kanTypes = [Open, Closed, Added]
 
 --------------------------------------------------------------------------------
 
-errExpect tile expected found = Err . Text.pack $
-    printf "expected %d %s tiles, found %d" expected (show tile) found
+errExpect tile expectedCount = Err . Text.pack $
+    printf "require %d %s tiles" expectedCount (show tile)
 
 errNoRun base  = Err . Text.pack $
     printf "err no run starting at %s" (show base)
@@ -67,13 +69,10 @@ errExpectDraw    = Err "requested meld can only be performed on drawn tiles"
 --------------------------------------------------------------------------------
 
 consumeRepeats :: Int -> Meld -> Tile -> Hand -> Result Hand
-consumeRepeats minimum meld tile (tiles, melds) =
-    consume (length $ filter ((==) tile) tiles)
-  where
-    consume :: Int -> Result Hand
-    consume len
-      | minimum <= len = Ok (removeInstances minimum tile tiles, meld : melds)
-      | otherwise      = errExpect tile minimum len
+consumeRepeats minimum meld tile (tiles, melds) = do
+    tiles <- maybe (errExpect tile minimum) (return)
+                   (removeInstances minimum tile tiles)
+    return (tiles, meld:melds)
 
 --------------------------------------------------------------------------------
 
@@ -87,11 +86,10 @@ pon _ _ _ = errExpectDiscard
 --------------------------------------------------------------------------------
 
 kan :: KanType -> MeldFn
-kan Added (Drawn tile) 0 (tiles, melds) =
-    let meld = (Pon tile)
-     in if' (elem meld melds)
-            (Ok (tiles, Kan Added tile : removeSingle meld melds))
-            (Err "added kan requires an existing pon")
+kan Added (Drawn tile) 0 (tiles, melds) = do
+    melds <- resultFromMaybe "Hand must already contain a pon of the same tile"
+                           $ removeSingle (Pon tile) melds
+    return (tiles, Kan Added tile : melds)
 
 kan Added _ 0 _ = errExpectDraw
 kan Added _ _ _ = errBadPosition
@@ -107,25 +105,14 @@ kan _ _ _ _ = errExpectDiscard
 chii :: Tile -> MeldFn
 chii base (Discarded tile) 1 (tiles, melds) = do
     base' <- toNumericTile base
-    tile' <- toNumericTile tile
-
-    let value  = getValue base'
-        values = [ unsafeGetValue t | t <- tile:tiles, t === base ]
-
-    if' (all (\offset -> elem (value + offset) values) [0..2])
-        (ret $ removeRun base')
-        (errNoRun base)
+    tiles <- maybe (errNoRun base) (return) (removeRun base')
+    return (tiles, (Chii base):melds)
   where
-    ret tiles = return (tile:tiles, (Chii base):melds)
+    removeRun :: NumericTile -> Maybe Tiles
+    removeRun base = foldM (removeTile base) tiles [0..2]
 
-    unsafeGetValue :: Tile -> Int
-    unsafeGetValue = getValue . unwrap . toNumericTile
-
-    removeRun :: NumericTile -> Tiles
-    removeRun base = Prelude.foldl (del base) tiles [1,2]
-
-    del :: NumericTile -> Tiles -> Int -> Tiles
-    del base tiles offset =
+    removeTile :: NumericTile -> Tiles -> Int -> Maybe Tiles
+    removeTile base tiles offset =
         let tile = unwrap $ setValue base (getValue base + offset)
          in removeSingle (unwrapNumeric tile) tiles
 

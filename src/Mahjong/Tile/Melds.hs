@@ -1,3 +1,4 @@
+{-# Language PatternSynonyms #-}
 module Mahjong.Tile.Melds (
     Meld(..)
   , Melds
@@ -55,6 +56,11 @@ kanTypes = [Open, Closed, Added]
 
 --------------------------------------------------------------------------------
 
+pattern CurrentPlayer <- 0
+pattern NextPlayer <- 1
+
+--------------------------------------------------------------------------------
+
 errExpect tile expectedCount = Err . Text.pack $
     printf "require %d %s tiles" expectedCount (show tile)
 
@@ -86,13 +92,13 @@ pon _ _ _ = errExpectDiscard
 --------------------------------------------------------------------------------
 
 kan :: KanType -> MeldFn
-kan Added (Drawn tile) 0 (tiles, melds) = do
+kan Added (Drawn tile) CurrentPlayer (tiles, melds) = do
     melds <- resultFromMaybe "Hand must already contain a pon of the same tile"
                            $ removeSingle (Pon tile) melds
     return (tiles, Kan Added tile : melds)
 
-kan Added _ 0 _ = errExpectDraw
-kan Added _ _ _ = errBadPosition
+kan Added _ CurrentPlayer _ = errExpectDraw
+kan Added _ _             _ = errBadPosition
 
 kan ktype (Discarded tile) position hand
   | position /= 0 = consumeRepeats 3 (Kan ktype tile) tile hand
@@ -103,18 +109,22 @@ kan _ _ _ _ = errExpectDiscard
 --------------------------------------------------------------------------------
 
 chii :: Tile -> MeldFn
-chii base (Discarded tile) 1 (tiles, melds) = do
+chii base (Discarded tile) NextPlayer (tiles, melds) = do
     base' <- toNumericTile base
-    tiles <- maybe (errNoRun base) (return) (removeRun base')
+    tiles <- removeRun base'
     return (tiles, (Chii base):melds)
   where
-    removeRun :: NumericTile -> Maybe Tiles
-    removeRun base = foldM (removeTile base) (tile:tiles) [0..2]
+    removeRun :: NumericTile -> Result Tiles
+    removeRun base
+      | value < 8 = foldM (removeTile base value) (tile:tiles) [0..2]
+      | otherwise = Err "Base value must be between [1..7] inclusive"
+      where value = getValue base
 
-    removeTile :: NumericTile -> Tiles -> Int -> Maybe Tiles
-    removeTile base tiles offset =
-        let tile = unwrap $ setValue base (getValue base + offset)
-         in removeSingle (unwrapNumeric tile) tiles
+    removeTile :: NumericTile -> Int -> Tiles -> Int -> Result Tiles
+    removeTile base value tiles offset = do
+        tile <- setValue base (value + offset)
+        maybe (errNoRun base) (return)
+              (removeSingle (unwrapNumeric tile) tiles)
 
 chii _ (Discarded _) position _ = errBadPosition
 chii _ _             _        _ = errExpectDiscard
@@ -122,7 +132,7 @@ chii _ _             _        _ = errExpectDiscard
 --------------------------------------------------------------------------------
 
 testForMelds :: ActiveTile -> Int -> Hand -> Melds
-testForMelds _ 0 _ = []
+testForMelds _ CurrentPlayer _ = []
 testForMelds tile position hand =
     [ meld | Ok meld <- map testMeld (ponkan ++ chii') ]
   where

@@ -109,7 +109,7 @@ chii base (Discarded tile) 1 (tiles, melds) = do
     return (tiles, (Chii base):melds)
   where
     removeRun :: NumericTile -> Maybe Tiles
-    removeRun base = foldM (removeTile base) tiles [0..2]
+    removeRun base = foldM (removeTile base) (tile:tiles) [0..2]
 
     removeTile :: NumericTile -> Tiles -> Int -> Maybe Tiles
     removeTile base tiles offset =

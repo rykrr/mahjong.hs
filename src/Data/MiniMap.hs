@@ -70,10 +70,10 @@ instance Show MiniVal where
 instance Show MiniMap where
     show minimap
       | Map.null $ unMiniMap minimap = "{}"
-      | otherwise                    = unpack $ brace $
+      | otherwise = unpack $ brace $
             Prelude.foldl1 (\x y -> x <> ", " <> y)
                          $ Prelude.map showEntry
-                                       (toAscList $ unMiniMap minimap)
+                                     $ toAscList (unMiniMap minimap)
       where
         quote text = "\"" <> text <> "\""
         brace text = "{" <> text <> "}"
@@ -100,8 +100,9 @@ parse' input@(x:>xs) = case x of
 parseVec :: Text -> Result (MiniVec, Text)
 parseVec Empty     = Err "Reached <EOL> while looking for ']'"
 parseVec (']':>xs) = return (MiniVec Vec.empty, xs)
-parseVec input     = do
-    (item, remainder)  <- parse' input
+
+parseVec input = do
+    (item, remainder) <- parse' input
     (items, remainder) <- collect remainder [item]
     return (MiniVec (Vec.fromList items), remainder)
   where
@@ -110,27 +111,33 @@ parseVec input     = do
     collect (',':>xs) items = do
         (item, remainder) <- parse' xs
         collect remainder (items Prelude.++ [item])
+
     collect _ pairs = Err ""
 
 parseMap :: Text -> Result (MiniMap, Text)
 parseMap Empty     = Err "Reached <EOL> while looking for '}'"
 parseMap ('}':>xs) = return (MiniMap Map.empty, xs) 
-parseMap input     = do
-    (pair, remainder)  <- parseEntry (Text.strip input)
+
+parseMap input = do
+    (pair, remainder) <- parseEntry (Text.strip input)
     (pairs, remainder) <- collect remainder [pair]
     return (MiniMap (Map.fromList pairs), remainder)
   where
     collect ('}':>xs) pairs = return (pairs, xs)
     collect (' ':>xs) pairs = collect xs pairs
+
     collect (',':>xs) pairs = do
         (pair, remainder) <- parseEntry (Text.strip xs)
         collect (Text.strip remainder) (pair:pairs)
+
     collect _ pairs = Err "Expected ',' or '}' while parsing map"
 
     parseEntry Empty = Err "Reached <EOL> while parsing map entry"
     parseEntry ('"':>xs) = do
         (key, remainder) <- parseStr (Text.strip xs)
+
         let remainder' = Text.strip remainder
+
         if' (Text.head remainder' == ':')
             (parse' (Text.tail remainder') >>= \(value, remainder) ->
                 return ((key, value), remainder))
@@ -180,6 +187,7 @@ lookup key map =
         value <- resultFromMaybe ("Key not found")
                                $ Map.lookup key (unMiniMap map)
         lookup' keys value
+
     lookup' _ _ = Err "Attempted to perform lookup on a non-map object"
 
 lookupConvert :: (MiniVal -> Result a) -> Text -> MiniMap -> Result a

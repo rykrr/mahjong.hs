@@ -1,14 +1,15 @@
 module Mahjong.Board.Actions (doAction) where
 
 import Mahjong.Board
-import Mahjong.Board.Event
+import Mahjong.Board.Event as Event
 import Mahjong.Board.Pending as Pending
 
 import Mahjong.Tile.Melds as Melds
-import Mahjong.Tile.MiniMappings
+import Mahjong.Tile.Mappings.Text
 import Mahjong.Tile.ActiveTile
 
 import Mahjong.Players as Players
+import Mahjong.Players.Player as Player
 
 import Data.MiniMap as Mini
 import Data.Text as Text
@@ -30,8 +31,8 @@ doAction board@(Board { activeTile = Just activeTile }) id args = do
     case action of
         "dismiss" -> return board { pending = dismiss id (pending board) }
         "discard" -> do
-            tileMap <- Mini.lookup "discard" args
-            tile <- toTile tileMap
+            tileStr <- Mini.lookupStr "discard" args
+            tile <- parseTile tileStr
 
             let board' = board {
                 activeTile = Just (Discarded tile)
@@ -48,39 +49,35 @@ doAction board@(Board { activeTile = Just activeTile }) id args = do
   where
     handleMeld :: MiniMap -> Result Board
     handleMeld meldArgs = do
-        meldType <- Mini.lookupStr "type" meldArgs
+        meldStr <- Mini.lookupStr "type" meldArgs
+        tileStr <- Mini.lookupStr "tiles" meldArgs
+        tiles <- parseTiles tileStr
 
-        (meldFn, meldInfo) <- getMeld meldArgs meldType
+        meldFn <- getMeldFn (Text.words meldStr)
+        board <- withPlayer board id (modifyHand (meldFn activeTile tiles))
 
-        let meld   = Meld (meldInfo (unwrapActive activeTile))
-        let board' = board { lastEvent = PlayerEvent id meld }
+        let hand = Player.getHand $ Players.head $ players board
+        let meld = Prelude.head (snd hand)
+        return $ board { lastEvent = PlayerEvent id (Event.Meld meld) }
 
-        withPlayer board' id (modifyHand (meldFn activeTile))
+    getMeldFn :: [Text] -> Result MeldFn
+    getMeldFn ("kan":kanTypeStr:[]) = case Text.toLower kanTypeStr of
+        "open"   -> return (kan Open)
+        "closed" -> return (kan Closed)
+        _        -> Err "invalid kan type"
 
-    getMeld :: MiniMap -> Text -> Result (MeldFn, Tile -> Meld)
-    getMeld meldArgs meldType = case meldType of
-        "chii" -> do
-            tileMap <- Mini.lookup "chii" meldArgs
-            base <- toTile tileMap
-            return (chii base, Chii)
+    getMeldFn ("chii":[]) = return chii
+    getMeldFn ("pon":[])  = return pon
 
-        "kan" -> do
-            kanType <- Mini.lookupStr "kan" meldArgs
-            kanType <- case Text.toLower kanType of
-                "open"   -> return Open
-                "closed" -> return Closed
-                _        -> Err "invalid kan type"
-            return (kan kanType, Kan kanType)
+    getMeldFn _ = Err "Unknown meld (or bad meld specifier)"
 
-        "pon" -> return (pon, Pon)
-        _     -> Err "unknown meld"
 
 doAction board@(Board { activeTile = Nothing }) id args = do
     action <- getActionText args
     case action of
         "discard" -> do
-            tileMap <- Mini.lookup "discard" args
-            tile <- toTile tileMap
+            tileStr <- Mini.lookupStr "discard" args
+            tile <- parseTile tileStr
 
             let board' = board {
                 activeTile = Just (Discarded tile)

@@ -1,6 +1,7 @@
 module Helper.List where
 
 import Data.Sort as Sort
+import Control.Monad
 
 --------------------------------------------------------------------------------
 
@@ -17,6 +18,12 @@ removeInstances n y (x:xs)
 
 removeSingle :: Eq a => a -> [a] -> Maybe [a]
 removeSingle = removeInstances 1
+
+--------------------------------------------------------------------------------
+
+remove :: Eq a => [a] -> [a] -> Maybe [a]
+remove [] xs = Just xs
+remove rs xs = foldM (flip removeSingle) xs rs
 
 --------------------------------------------------------------------------------
 
@@ -41,5 +48,11 @@ removeInstances' n cond (x:xs)
 
 removeSingle' :: (a -> Bool) -> [a] -> Maybe [a]
 removeSingle' = removeInstances' 1
+
+--------------------------------------------------------------------------------
+
+thereCanBeOnlyOne :: [a] -> Maybe a
+thereCanBeOnlyOne [x] = Just x
+thereCanBeOnlyOne _   = Nothing
 
 --------------------------------------------------------------------------------

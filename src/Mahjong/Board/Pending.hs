@@ -33,10 +33,11 @@ maxPriority, minPriority :: Priority
 maxPriority = 0
 minPriority = 9
 
-meldPriority :: Meld -> Priority
-meldPriority (Kan _ _) = 2
-meldPriority (Pon _)   = 2
-meldPriority (Chii _)  = 3
+meldPriority :: MeldType -> Priority
+meldPriority meld = case meld of
+    Pon   -> 2
+    Kan _ -> 2
+    Chii  -> 3
 
 --------------------------------------------------------------------------------
 
@@ -49,14 +50,12 @@ findPending players activeTile =
     atLeastOne :: (a, [b]) -> Bool
     atLeastOne = not . Prelude.null . snd
 
-    findActions :: Player -> (PlayerId, Melds)
+    findActions :: Player -> (PlayerId, [MeldType])
     findActions player =
-        let melds = testForMelds (activeTile)
-                                 (position player)
-                                 (getHand player)
+        let melds = checkMelds (activeTile) (position player) (getHand player)
          in (getPlayerId player, melds)
 
-    toPriority :: (PlayerId, Melds) -> (PlayerId, Priority)
+    toPriority :: (PlayerId, [MeldType]) -> (PlayerId, Priority)
     toPriority (id, melds) =
         let priority = foldl (flip $ min . meldPriority) minPriority melds
          in (id, priority)

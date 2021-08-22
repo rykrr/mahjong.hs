@@ -31,9 +31,8 @@ executable mahjong-exe
     , Mahjong.Board.Pending
     , Mahjong.Tile
     , Mahjong.Tile.ActiveTile
-    , Mahjong.Tile.NumericTile
+    , Mahjong.Tile.TestResult
     , Mahjong.Tile.Melds
-    , Mahjong.Tile.MiniMappings
     , Mahjong.Players
     , Mahjong.Players.Player
   hs-source-dirs:

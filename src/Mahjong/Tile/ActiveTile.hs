@@ -6,7 +6,7 @@ import Mahjong.Tile
 
 data ActiveTile = Drawn Tile
                 | Discarded Tile
-                deriving (Show)
+                deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
 

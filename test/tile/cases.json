@@ -1,0 +1,10 @@
+[
+  {
+    "name": "alpha",
+    "hand": {
+      "concealed": "123m456s789p",
+      "melds": []
+    },
+    "expect": ["chii"]
+  }
+]

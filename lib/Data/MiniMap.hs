@@ -33,7 +33,7 @@ import Control.Result
 import Control.Monad
 import Control.If
 
-import Data.Char (isNumber)
+import Data.Char (isDigit, isAlpha, isSpace)
 
 import Data.Map as Map
 import Data.Text as Text
@@ -53,11 +53,26 @@ data MiniVal = Int Int
 
 --------------------------------------------------------------------------------
 
+puncons :: Text -> Maybe (Char, Text)
+puncons text = Text.uncons text >>= \(x,xs) -> return (x, Text.strip xs)
+
+punsnoc :: Text -> Maybe (Text, Char)
+punsnoc text = Text.unsnoc text >>= \(xs,x) -> return (Text.strip xs, x)
+
 infix 5 :>
 infix 5 :<
-pattern x :> xs <- (Text.uncons -> Just (x, xs))
-pattern xs :< x <- (Text.unsnoc -> Just (xs, x))
+pattern x :> xs <- (puncons -> Just (x, xs))
+pattern xs :< x <- (punsnoc -> Just (xs, x))
 pattern Empty   <- (Text.uncons -> Nothing)
+
+test :: (Char -> Bool) -> Char -> Maybe Char
+test fn c
+  | fn c      = return c
+  | otherwise = Nothing
+
+pattern Alpha c <- (test isAlpha -> Just c)
+pattern Digit c <- (test isDigit -> Just c)
+pattern Space c <- (test isSpace -> Just c)
 
 --------------------------------------------------------------------------------
 
@@ -90,7 +105,7 @@ parse text = parse' text >>= return . fst
 
 parse' :: Text -> Result (MiniVal, Text)
 parse' Empty         = Err "Reached <EOL>"
-parse' (' ':>xs)     = parse' (Text.strip xs)
+parse' (Space _:>xs) = parse' xs
 parse' input@(x:>xs) = case x of
     '[' -> parseVec xs    >>= \(c,r) -> return (Vec c, r)
     '{' -> parseMap xs    >>= \(c,r) -> return (Map c, r)
@@ -106,26 +121,27 @@ parseVec input = do
     (items, remainder) <- collect remainder [item]
     return (MiniVec (Vec.fromList items), remainder)
   where
+    collect (Space _:>xs) items = collect xs items
+
     collect (']':>xs) items = return (items, xs)
-    collect (' ':>xs) items = collect xs items
     collect (',':>xs) items = do
-        (item, remainder) <- parse' xs
+        (item, remainder) <- parse' $ Text.strip xs
         collect remainder (items Prelude.++ [item])
 
     collect _ pairs = Err ""
 
 parseMap :: Text -> Result (MiniMap, Text)
 parseMap Empty     = Err "Reached <EOL> while looking for '}'"
-parseMap ('}':>xs) = return (MiniMap Map.empty, xs) 
+parseMap ('}':>xs) = return (MiniMap Map.empty, xs)
 
 parseMap input = do
     (pair, remainder) <- parseEntry (Text.strip input)
     (pairs, remainder) <- collect remainder [pair]
     return (MiniMap (Map.fromList pairs), remainder)
   where
-    collect ('}':>xs) pairs = return (pairs, xs)
-    collect (' ':>xs) pairs = collect xs pairs
+    collect (Space _:>xs) pairs = collect xs pairs
 
+    collect ('}':>xs) pairs = return (pairs, xs)
     collect (',':>xs) pairs = do
         (pair, remainder) <- parseEntry (Text.strip xs)
         collect (Text.strip remainder) (pair:pairs)
@@ -155,8 +171,8 @@ parseInt input = do
   where
     collect Empty         collected = return (collected, Text.empty)
     collect input@(x:>xs) collected
-      | isNumber x = collect xs (Text.snoc collected x)
-      | otherwise  = return (collected, input)
+      | isDigit x = collect xs (Text.snoc collected x)
+      | otherwise = return (collected, input)
 
 parseStr :: Text -> Result (Text, Text)
 parseStr input =

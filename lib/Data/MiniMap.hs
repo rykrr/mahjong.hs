@@ -125,7 +125,7 @@ parseVec input = do
 
     collect (']':>xs) items = return (items, xs)
     collect (',':>xs) items = do
-        (item, remainder) <- parse' $ Text.strip xs
+        (item, remainder) <- parse' xs
         collect remainder (items Prelude.++ [item])
 
     collect _ pairs = Err ""
@@ -135,7 +135,7 @@ parseMap Empty     = Err "Reached <EOL> while looking for '}'"
 parseMap ('}':>xs) = return (MiniMap Map.empty, xs)
 
 parseMap input = do
-    (pair, remainder) <- parseEntry (Text.strip input)
+    (pair, remainder) <- parseEntry input
     (pairs, remainder) <- collect remainder [pair]
     return (MiniMap (Map.fromList pairs), remainder)
   where
@@ -143,14 +143,14 @@ parseMap input = do
 
     collect ('}':>xs) pairs = return (pairs, xs)
     collect (',':>xs) pairs = do
-        (pair, remainder) <- parseEntry (Text.strip xs)
+        (pair, remainder) <- parseEntry xs
         collect (Text.strip remainder) (pair:pairs)
 
     collect _ pairs = Err "Expected ',' or '}' while parsing map"
 
     parseEntry Empty = Err "Reached <EOL> while parsing map entry"
     parseEntry ('"':>xs) = do
-        (key, remainder) <- parseStr (Text.strip xs)
+        (key, remainder) <- parseStr xs
 
         let remainder' = Text.strip remainder
 

@@ -56,19 +56,16 @@ data MiniVal = Int Int
 puncons :: Text -> Maybe (Char, Text)
 puncons text = Text.uncons text >>= \(x,xs) -> return (x, Text.strip xs)
 
-punsnoc :: Text -> Maybe (Text, Char)
-punsnoc text = Text.unsnoc text >>= \(xs,x) -> return (Text.strip xs, x)
-
 infix 5 :>
-infix 5 :<
 pattern x :> xs <- (puncons -> Just (x, xs))
-pattern xs :< x <- (punsnoc -> Just (xs, x))
+
+infix 5 :-
+pattern x :- xs <- (Text.uncons -> Just (x, xs))
 pattern Empty   <- (Text.uncons -> Nothing)
 
 test :: (Char -> Bool) -> Char -> Maybe Char
-test fn c
-  | fn c      = return c
-  | otherwise = Nothing
+test fn c | fn c      = return c
+          | otherwise = Nothing
 
 pattern Alpha c <- (test isAlpha -> Just c)
 pattern Digit c <- (test isDigit -> Just c)
@@ -106,10 +103,11 @@ parse text = parse' text >>= return . fst
 parse' :: Text -> Result (MiniVal, Text)
 parse' Empty         = Err "Reached <EOL>"
 parse' (Space _:>xs) = parse' xs
+parse' ('"':-xs)     = parseStr xs >>= \(c,r) -> return (Str c, r)
+
 parse' input@(x:>xs) = case x of
     '[' -> parseVec xs    >>= \(c,r) -> return (Vec c, r)
     '{' -> parseMap xs    >>= \(c,r) -> return (Map c, r)
-    '"' -> parseStr xs    >>= \(c,r) -> return (Str c, r)
     _   -> parseInt input >>= \(c,r) -> return (Int c, r)
 
 parseVec :: Text -> Result (MiniVec, Text)
@@ -179,14 +177,14 @@ parseStr input =
     collect input Text.empty
   where
     collect Empty      collected = return (collected, Text.empty)
-    collect ('\\':>xs) collected
+    collect ('\\':-xs) collected
       | Text.null xs = Err "Reached <EOL> while parsing string"
       | otherwise    = collect (Text.tail xs)
                                (Text.snoc (Text.snoc collected '\\')
                                           (Text.head xs))
 
-    collect ('"':>xs) collected = return (collected, xs)
-    collect (x:>xs)   collected = collect xs (Text.snoc collected x)
+    collect ('"':-xs) collected = return (collected, xs)
+    collect (x:-xs)   collected = collect xs (Text.snoc collected x)
 
 --------------------------------------------------------------------------------
 

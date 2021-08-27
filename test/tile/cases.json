@@ -2,9 +2,9 @@
   {
     "name": "alpha",
     "hand": {
-      "concealed": "123m456s789p",
+      "concealed": "123m456s789p4444z",
       "melds": []
     },
-    "expect": ["chii"]
+    "expect": ["chii pon kan"]
   }
 ]

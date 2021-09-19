@@ -26,6 +26,7 @@ data Player = Player {
   , seatWind       :: Wind
   , revealedTiles  :: Melds
   , concealedTiles :: Tiles
+  , declaredRiichi :: Bool
 } deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
@@ -49,6 +50,7 @@ toPlayer identity =
       , seatWind       = East
       , revealedTiles  = []
       , concealedTiles = []
+      , declaredRiichi = False
     }
 
 --------------------------------------------------------------------------------
@@ -68,7 +70,7 @@ modifyHand fn player = do
 
 clear :: Player -> Player
 clear player =
-    player { concealedTiles = [], revealedTiles = [] }
+    player { concealedTiles = [], revealedTiles = [], declaredRiichi = False }
 
 addTile :: Tile -> Player -> Player
 addTile tile player@(Player{ concealedTiles = concealed }) =
@@ -87,7 +89,7 @@ removeTile tile player@(Player{ concealedTiles = c }) = do
 replaceTile :: Tile -> Tile -> Player -> Result Player
 replaceTile target replacement player
   | target == replacement = return player
-  | otherwise             = removeTile target player >>=
-                                return . addTile replacement
+  | otherwise = removeTile target player >>=
+                    return . addTile replacement
 
 --------------------------------------------------------------------------------

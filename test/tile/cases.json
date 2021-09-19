@@ -2,9 +2,15 @@
   {
     "name": "alpha",
     "hand": {
-      "concealed": "123m456s789p4444z",
+      "tiles": "123m456s789p4444z",
       "melds": []
     },
-    "expect": ["chii pon kan"]
+    "cases" : [
+        {
+            "active": "Drawn 1z",
+            "melds": ["chii"],
+            "yakus": []
+        }
+    ]
   }
 ]

@@ -6,7 +6,7 @@
 {-# Language ViewPatterns #-}
 module Data.MiniMap (
     MiniMap
-  , MiniVec
+  , MiniVec(..)
   , MiniVal(..)
   , Data.MiniMap.parse
   , Data.MiniMap.lookup
@@ -14,13 +14,16 @@ module Data.MiniMap (
   , Data.MiniMap.lookupMap
   , Data.MiniMap.lookupStr
   , Data.MiniMap.lookupInt
+  , Data.MiniMap.lookupVec
   , Data.MiniMap.member
   , unwrapStr
   , unwrapMap
   , unwrapInt
+  , unwrapVec
   , toText
   , toMap
   , toInt
+  , toVec
   , isStr
   , isInt
   , isMap
@@ -37,7 +40,7 @@ import Data.Char (isDigit, isAlpha, isSpace)
 
 import Data.Map as Map
 import Data.Text as Text
-import Data.Vector as Vec
+import Data.Vector as Vector
 
 import Text.Read (readMaybe)
 
@@ -112,12 +115,12 @@ parse' input@(x:>xs) = case x of
 
 parseVec :: Text -> Result (MiniVec, Text)
 parseVec Empty     = Err "Reached <EOL> while looking for ']'"
-parseVec (']':>xs) = return (MiniVec Vec.empty, xs)
+parseVec (']':>xs) = return (MiniVec Vector.empty, xs)
 
 parseVec input = do
     (item, remainder) <- parse' input
     (items, remainder) <- collect remainder [item]
-    return (MiniVec (Vec.fromList items), remainder)
+    return (MiniVec (Vector.fromList items), remainder)
   where
     collect (Space _:>xs) items = collect xs items
 
@@ -198,7 +201,7 @@ lookup key map =
     lookup' :: [Text] -> MiniVal -> Result MiniVal
     lookup' []         value     = return value
     lookup' (key:keys) (Map map) = do
-        value <- resultFromMaybe ("Key not found")
+        value <- resultFromMaybe ("Key '" <> key <> "' not found")
                                $ Map.lookup key (unMiniMap map)
         lookup' keys value
 
@@ -215,6 +218,9 @@ lookupStr = lookupConvert toText
 
 lookupInt :: Text -> MiniMap -> Result Int
 lookupInt = lookupConvert toInt
+
+lookupVec :: Text -> MiniMap -> Result MiniVec
+lookupVec = lookupConvert toVec
 
 --------------------------------------------------------------------------------
 
@@ -248,6 +254,10 @@ toMap :: MiniVal -> Result MiniMap
 toMap (Map m) = return m
 toMap _       = Err "MiniVal is not of type Map"
 
+toVec :: MiniVal -> Result MiniVec
+toVec (Vec v) = return v
+toVec _       = Err "MiniVal is not of type Vec"
+
 --------------------------------------------------------------------------------
 
 unwrapStr :: MiniVal -> Text
@@ -258,5 +268,8 @@ unwrapInt (Int x) = x
 
 unwrapMap :: MiniVal -> MiniMap
 unwrapMap (Map m) = m
+
+unwrapVec :: MiniVal -> MiniVec
+unwrapVec (Vec v) = v
 
 --------------------------------------------------------------------------------

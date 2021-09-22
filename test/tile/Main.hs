@@ -1,6 +1,7 @@
 module Main where
 
 import System.Exit (exitSuccess, exitFailure)
+import System.IO
 
 import Mahjong.Tile
 import Mahjong.Tile.Melds (Melds, Hand, checkMelds)
@@ -11,8 +12,11 @@ import Control.Result
 import Control.Monad as Monad
 
 import Data.MiniMap
-import Data.Vector as Vector
-import Data.Text (pack)
+import qualified Data.Vector as Vector
+import Data.Text (Text, pack, unpack)
+
+perror :: Text -> IO ()
+perror text = hPutStrLn stderr ("\x1b[0;31m" <> unpack text <> "\x1b[0m" )
 
 main :: IO ()
 main = do
@@ -20,12 +24,18 @@ main = do
 
     -- TODO: Do a less sketchy job here
     let tests = unMiniVec $ unwrapVec $ unwrap $ parse $ pack input
-    Monad.mapM (putStrLn . show . test . unwrapMap) tests
+    --let result = foldM (\prev test -> prev >> runTest (unwrapMap test)) (Ok ()) tests
+    let result = mapM (runTest . unwrapMap) tests
 
-    exitSuccess
+    case result of
+        Ok _  -> exitSuccess
+        Err e -> do
+            perror "Test Suite Failed:"
+            perror e
+            exitFailure
 
-test :: MiniMap -> Result ()
-test m = do
+runTest :: MiniMap -> Result ()
+runTest m = do
     name <- lookupStr "name" m
     tiles <- lookupStr "hand.tiles" m >>= parseTiles
     -- TODO: Add melds when detecting win conditions
@@ -33,12 +43,11 @@ test m = do
     let hand = (tiles, [])
 
     cases <- lookupVec "cases" m >>= \x -> Vector.mapM toMap (unMiniVec x)
-    Vector.mapM_ (runTestCase hand) cases
+    Vector.mapM_ (runTestCase name hand) cases
 
   where
-    runTestCase :: Hand -> MiniMap -> Result ()
-    runTestCase (tiles, melds) m = do
+    runTestCase :: Text -> Hand -> MiniMap -> Result ()
+    runTestCase name (tiles, melds) m = do
         activeTile <- lookupStr "active" m >>= parseActive
-        checkMelds 
-        Err (pack $ show $ activeTile)
+        Err ("Case " <> name <> ": " <> (pack $ show $ activeTile))
 

@@ -32,12 +32,12 @@ mapping = [("Drawn", Drawn), ("Discarded", Discarded)]
 
 parseActive :: Text -> Result ActiveTile
 parseActive text = do
-    resultFromMaybe "No matching prefix" parse >>= \x -> x
+    resultFromMaybe "No matching prefix" parse
   where 
-    parse :: Maybe (Result ActiveTile)
+    parse :: Maybe ActiveTile
     parse = thereCanBeOnlyOne
-        [ parseTile (Text.strip text) >>= return . mapFn
-            | (prefix, mapFn) <- mapping
-            , Just text <- [Text.stripPrefix prefix text] ]
+        [ mapFn tile | (prefix, mapFn) <- mapping
+                     , Just text <- [Text.stripPrefix prefix text]
+                     , Ok tile <- [parseTile (Text.strip text)] ]
 
 --------------------------------------------------------------------------------
